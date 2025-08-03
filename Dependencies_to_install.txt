@@ -1,0 +1,7 @@
+react
+react-dom
+socket.io-client
+react-scroll-to-bottom
+@testing-library/react
+@testing-library/jest-dom
+react-scripts

@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "emoji-picker-react": "^4.13.2",
+    "mongoose": "^8.16.4",
+    "web-vitals": "^5.0.3"
+  }
+}

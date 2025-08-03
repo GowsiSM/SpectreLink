@@ -1,45 +1,286 @@
-.App {
-  width: 100vw;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #f4f4f9;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-.joinChatContainer {
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #121212 0%, #0a0a0a 100%);
+  color: #E0E0E0;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.App {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  background: white;
+  justify-content: center;
+  min-height: 100vh;
   padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(187, 134, 252, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(3, 218, 198, 0.1) 0%, transparent 50%),
+    #121212;
+}
+
+/* Join Chat Container */
+.joinChatContainer {
+  background: rgba(29, 29, 29, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(187, 134, 252, 0.2);
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.5),
+    0 0 60px rgba(187, 134, 252, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+  animation: slideUp 0.6s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .joinChatContainer h3 {
-  font-size: 1.8rem;
-  margin-bottom: 15px;
+  color: #E0E0E0;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 30px;
+  background: linear-gradient(135deg, #BB86FC, #03DAC6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .joinChatContainer input {
-  width: 250px;
-  padding: 10px;
-  margin: 10px;
-  border: 2px solid #43a047;
-  border-radius: 5px;
-  font-size: 1rem;
+  width: 100%;
+  padding: 16px 20px;
+  margin: 12px 0;
+  background: rgba(45, 45, 45, 0.8);
+  border: 2px solid rgba(187, 134, 252, 0.3);
+  border-radius: 16px;
+  color: #E0E0E0;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+.joinChatContainer input::placeholder {
+  color: rgba(224, 224, 224, 0.6);
+}
+
+.joinChatContainer input:focus {
+  border-color: #BB86FC;
+  background: rgba(31, 27, 36, 0.9);
+  box-shadow: 
+    0 0 0 4px rgba(187, 134, 252, 0.1),
+    0 8px 25px rgba(187, 134, 252, 0.2);
+  transform: translateY(-2px);
 }
 
 .joinChatContainer button {
-  padding: 12px 30px;
-  background-color: #43a047;
-  color: white;
+  width: 100%;
+  padding: 16px 20px;
+  margin-top: 20px;
+  background: linear-gradient(135deg, #BB86FC 0%, #9C27B0 100%);
   border: none;
-  border-radius: 5px;
+  border-radius: 16px;
+  color: #000;
+  font-size: 16px;
+  font-weight: 700;
   cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 8px 25px rgba(187, 134, 252, 0.3);
 }
 
 .joinChatContainer button:hover {
-  background-color: #388e3c;
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(187, 134, 252, 0.4);
+  background: linear-gradient(135deg, #C69EFC 0%, #A855F7 100%);
+}
+
+.joinChatContainer button:active {
+  transform: translateY(-1px);
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .joinChatContainer {
+    padding: 30px 20px;
+    margin: 20px;
+    border-radius: 20px;
+  }
+  
+  .joinChatContainer h3 {
+    font-size: 24px;
+  }
+  
+  .joinChatContainer input,
+  .joinChatContainer button {
+    padding: 14px 16px;
+    font-size: 15px;
+  }
+}
+
+/* Loading animation for when transitioning */
+.fadeIn {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Mobile devices only */
+@media (max-width: 480px) {
+  .App {
+    padding: 10px;
+  }
+  
+  .joinChatContainer {
+    max-width: none;
+    width: calc(100% - 20px);
+    margin: 0 10px;
+  }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 360px) {
+  .App {
+    padding: 5px;
+  }
+  
+  .joinChatContainer {
+    width: calc(100% - 10px);
+    margin: 0 5px;
+  }
+}
+
+/* Loading animation for when transitioning */
+.fadeIn {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+/* Error Message Styling */
+.error-message {
+  background: rgba(244, 67, 54, 0.15);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(244, 67, 54, 0.4);
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  color: #FF6B6B;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  animation: errorSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 4px 15px rgba(244, 67, 54, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.error-message::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(244, 67, 54, 0.1), transparent);
+  animation: errorShimmer 2s infinite;
+}
+
+.error-message::after {
+  content: '⚠';
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: #FF6B6B;
+  opacity: 0.8;
+}
+
+.error-message {
+  padding-left: 40px; /* Make room for the warning icon */
+}
+
+@keyframes errorSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-15px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes errorShimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Hover effect for better interactivity */
+.error-message:hover {
+  border-color: rgba(244, 67, 54, 0.6);
+  background: rgba(244, 67, 54, 0.2);
+  transform: translateY(-1px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 6px 20px rgba(244, 67, 54, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Responsive design for error message */
+@media (max-width: 480px) {
+  .error-message {
+    font-size: 13px;
+    padding: 12px 16px 12px 36px;
+    margin-bottom: 16px;
+    border-radius: 10px;
+  }
+  
+  .error-message::after {
+    left: 10px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 360px) {
+  .error-message {
+    font-size: 12px;
+    padding: 10px 14px 10px 32px;
+    margin-bottom: 14px;
+  }
+  
+  .error-message::after {
+    left: 8px;
+    font-size: 13px;
+  }
 }
