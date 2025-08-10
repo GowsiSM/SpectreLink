@@ -2,24 +2,15 @@
 // const express = require("express");
 // const http = require("http");
 // const cors = require("cors");
-// const bodyParser = require("body-parser");
 // const { Server } = require("socket.io");
-// const mongoose = require("mongoose");
-
-// const connectDB = require("./db");
-// const WebVital = require("./models/WebVital");
 
 // const app = express();
 // const server = http.createServer(app);
 // const PORT = 3001;
 
-// // MongoDB Connection
-// connectDB();
-
 // // Middleware
 // app.use(cors());
 // app.use(express.json());
-// app.use(bodyParser.json());
 
 // // --- WebSocket (Chat logic) ---
 // const io = new Server(server, {
@@ -33,6 +24,8 @@
 // let userRooms = {}; // Track which room each socket is in
 // let userSockets = {}; // Track socket info per user
 // let roomUsernames = {}; // Track usernames per room to prevent duplicates
+// let typingUsers = {}; // Track typing users per room
+// let activeCalls = {}; // Track active calls per room
 
 // io.on("connection", (socket) => {
 //   console.log(`🟢 User Connected: ${socket.id}`);
@@ -79,8 +72,169 @@
 
 //   socket.on("send_message", (data) => {
 //     console.log(`Message from ${data.author} in room ${data.room}: ${data.message}`);
+    
+//     // Clear typing status when message is sent
+//     const room = data.room;
+//     const username = data.author;
+//     if (typingUsers[room] && typingUsers[room][username]) {
+//       delete typingUsers[room][username];
+//       socket.to(room).emit("user_stopped_typing", { username, room });
+//     }
+    
 //     // Broadcast message to all other users in the room
 //     socket.to(data.room).emit("receive_message", data);
+//   });
+
+//   socket.on("typing", ({ room, username }) => {
+//     if (!typingUsers[room]) {
+//       typingUsers[room] = {};
+//     }
+    
+//     if (!typingUsers[room][username]) {
+//       typingUsers[room][username] = {
+//         socketId: socket.id,
+//         timestamp: Date.now()
+//       };
+      
+//       // Broadcast to other users in the room that this user is typing
+//       socket.to(room).emit("user_typing", { username, room });
+//       console.log(`👀 ${username} is typing in room ${room}`);
+//     }
+//   });
+
+//   socket.on("stop_typing", ({ room, username }) => {
+//     if (typingUsers[room] && typingUsers[room][username]) {
+//       delete typingUsers[room][username];
+      
+//       // Broadcast to other users that this user stopped typing
+//       socket.to(room).emit("user_stopped_typing", { username, room });
+//       console.log(`⏹️ ${username} stopped typing in room ${room}`);
+//     }
+//   });
+
+//   // WebRTC Signaling Events
+//   socket.on("start_call", (data) => {
+//     const { room, callType, caller } = data;
+//     console.log(`📞 ${caller} is starting a ${callType} call in room ${room}`);
+    
+//     // Initialize active call for room
+//     if (!activeCalls[room]) {
+//       activeCalls[room] = {
+//         type: callType,
+//         participants: new Set(),
+//         startedBy: caller,
+//         startTime: Date.now()
+//       };
+//     }
+    
+//     activeCalls[room].participants.add(caller);
+    
+//     // Notify other users in the room about incoming call
+//     socket.to(room).emit("incoming_call", {
+//       caller: caller,
+//       callType: callType,
+//       room: room
+//     });
+//   });
+
+//   socket.on("join_call", (data) => {
+//     const { room, caller, joiner } = data;
+//     console.log(`📞 ${joiner} is joining the call with ${caller} in room ${room}`);
+    
+//     if (activeCalls[room]) {
+//       activeCalls[room].participants.add(joiner);
+//     }
+    
+//     // Notify the caller that someone joined
+//     socket.to(room).emit("call_accepted", {
+//       joiner: joiner,
+//       caller: caller
+//     });
+//   });
+
+//   socket.on("offer", (data) => {
+//     const { room, peerId, offer } = data;
+//     console.log(`🤝 Offer sent in room ${room} to peer ${peerId}`);
+    
+//     // Forward the offer to the specific peer
+//     socket.to(room).emit("offer", {
+//       peerId: userSockets[socket.id]?.username,
+//       offer: offer
+//     });
+//   });
+
+//   socket.on("answer", (data) => {
+//     const { room, peerId, answer } = data;
+//     console.log(`✅ Answer sent in room ${room} to peer ${peerId}`);
+    
+//     // Forward the answer to the specific peer
+//     socket.to(room).emit("answer", {
+//       peerId: userSockets[socket.id]?.username,
+//       answer: answer
+//     });
+//   });
+
+//   socket.on("ice_candidate", (data) => {
+//     const { room, peerId, candidate } = data;
+//     console.log(`🧊 ICE candidate sent in room ${room} to peer ${peerId}`);
+    
+//     // Forward the ICE candidate to the specific peer
+//     socket.to(room).emit("ice_candidate", {
+//       peerId: userSockets[socket.id]?.username,
+//       candidate: candidate
+//     });
+//   });
+
+//   socket.on("decline_call", (data) => {
+//     const { room, user } = data;
+//     console.log(`❌ ${user} declined the call in room ${room}`);
+    
+//     // Notify other users that the call was declined
+//     socket.to(room).emit("call_declined", {
+//       user: user,
+//       room: room
+//     });
+//   });
+
+//   socket.on("end_call", (data) => {
+//     const { room, user } = data;
+//     console.log(`📴 ${user} ended the call in room ${room}`);
+    
+//     if (activeCalls[room]) {
+//       activeCalls[room].participants.delete(user);
+      
+//       // If no participants left, clean up the call
+//       if (activeCalls[room].participants.size === 0) {
+//         delete activeCalls[room];
+//         console.log(`🧹 Cleaned up call data for room ${room}`);
+//       }
+//     }
+    
+//     // Notify other users that the call was ended (but not the sender)
+//     socket.to(room).emit("call_ended", {
+//       user: user,
+//       room: room
+//     });
+//   });
+
+//   socket.on("leave_call", (data) => {
+//     const { room, user } = data;
+//     console.log(`🚪 ${user} left the call in room ${room}`);
+    
+//     if (activeCalls[room]) {
+//       activeCalls[room].participants.delete(user);
+      
+//       // If no participants left, clean up the call
+//       if (activeCalls[room].participants.size === 0) {
+//         delete activeCalls[room];
+//       }
+//     }
+    
+//     // Notify other users that someone left the call
+//     socket.to(room).emit("user_left_call", {
+//       user: user,
+//       room: room
+//     });
 //   });
 
 //   socket.on("disconnect", () => {
@@ -98,11 +252,37 @@
       
 //       // Remove username from room's username set
 //       if (userInfo && roomUsernames[room]) {
-//         roomUsernames[room].delete(userInfo.username);
+//         const username = userInfo.username;
+//         roomUsernames[room].delete(username);
+        
+//         // Clean up typing status
+//         if (typingUsers[room] && typingUsers[room][username]) {
+//           delete typingUsers[room][username];
+//           socket.to(room).emit("user_stopped_typing", { username, room });
+//         }
+        
+//         // Clean up call participation
+//         if (activeCalls[room] && activeCalls[room].participants.has(username)) {
+//           activeCalls[room].participants.delete(username);
+          
+//           // Notify other users that this user left the call
+//           socket.to(room).emit("user_left_call", {
+//             user: username,
+//             room: room
+//           });
+          
+//           // If no participants left, clean up the call
+//           if (activeCalls[room].participants.size === 0) {
+//             delete activeCalls[room];
+//             console.log(`🧹 Cleaned up call data for room ${room} due to disconnect`);
+//           }
+//         }
         
 //         // Clean up empty room data
 //         if (roomUsernames[room].size === 0) {
 //           delete roomUsernames[room];
+//           delete typingUsers[room];
+//           delete activeCalls[room];
 //         }
 //       }
       
@@ -122,87 +302,62 @@
 //   });
 // });
 
-// // --- REST API Routes for Web Vitals ---
-
-// // POST endpoint to receive web vitals data
-// app.post("/web-vitals", async (req, res) => {
-//   try {
-//     const vitalData = req.body;
-//     console.log(`📊 Received Web Vital: ${vitalData.name} = ${vitalData.value} (${vitalData.rating}) from ${vitalData.username} in room ${vitalData.room}`);
-    
-//     const webVital = new WebVital(vitalData);
-//     await webVital.save();
-    
-//     res.status(200).json({ message: "Web vital saved successfully" });
-//   } catch (error) {
-//     console.error("Error saving web vital:", error);
-//     res.status(500).json({ error: "Failed to save web vital" });
-//   }
-// });
-
-// // GET endpoint to retrieve web vitals data
-// app.get("/web-vitals", async (req, res) => {
-//   try {
-//     const { room, username, limit = 50 } = req.query;
-    
-//     let query = {};
-//     if (room) query.room = room;
-//     if (username) query.username = username;
-    
-//     const vitals = await WebVital.find(query)
-//       .sort({ timestamp: -1 })
-//       .limit(parseInt(limit));
-      
-//     res.status(200).json(vitals);
-//   } catch (error) {
-//     console.error("Error fetching web vitals:", error);
-//     res.status(500).json({ error: "Failed to fetch web vitals" });
-//   }
-// });
-
-// // GET endpoint for performance analytics
-// app.get("/web-vitals/analytics", async (req, res) => {
-//   try {
-//     const { room } = req.query;
-    
-//     let matchStage = {};
-//     if (room) matchStage.room = room;
-    
-//     const analytics = await WebVital.aggregate([
-//       { $match: matchStage },
-//       {
-//         $group: {
-//           _id: "$name",
-//           avgValue: { $avg: "$value" },
-//           minValue: { $min: "$value" },
-//           maxValue: { $max: "$value" },
-//           count: { $sum: 1 },
-//           goodCount: {
-//             $sum: { $cond: [{ $eq: ["$rating", "good"] }, 1, 0] }
-//           },
-//           needsImprovementCount: {
-//             $sum: { $cond: [{ $eq: ["$rating", "needs-improvement"] }, 1, 0] }
-//           },
-//           poorCount: {
-//             $sum: { $cond: [{ $eq: ["$rating", "poor"] }, 1, 0] }
-//           }
-//         }
+// // Clean up stale typing indicators every 30 seconds
+// setInterval(() => {
+//   const now = Date.now();
+//   const TYPING_TIMEOUT = 30000; // 30 seconds
+  
+//   Object.keys(typingUsers).forEach(room => {
+//     Object.keys(typingUsers[room]).forEach(username => {
+//       const typingData = typingUsers[room][username];
+//       if (now - typingData.timestamp > TYPING_TIMEOUT) {
+//         delete typingUsers[room][username];
+//         io.to(room).emit("user_stopped_typing", { username, room });
+//         console.log(`🧹 Cleaned up stale typing indicator for ${username} in room ${room}`);
 //       }
-//     ]);
+//     });
     
-//     res.status(200).json(analytics);
-//   } catch (error) {
-//     console.error("Error fetching analytics:", error);
-//     res.status(500).json({ error: "Failed to fetch analytics" });
-//   }
+//     // Clean up empty room typing data
+//     if (Object.keys(typingUsers[room]).length === 0) {
+//       delete typingUsers[room];
+//     }
+//   });
+// }, 30000);
+
+// // Health check endpoint
+// app.get("/health", (req, res) => {
+//   res.status(200).json({
+//     status: "healthy",
+//     timestamp: new Date().toISOString(),
+//     activeRooms: Object.keys(roomUsers).length,
+//     totalUsers: Object.values(roomUsers).reduce((sum, count) => sum + count, 0),
+//     activeCalls: Object.keys(activeCalls).length
+//   });
+// });
+
+// // Get room statistics
+// app.get("/rooms/stats", (req, res) => {
+//   const stats = {
+//     totalRooms: Object.keys(roomUsers).length,
+//     totalUsers: Object.values(roomUsers).reduce((sum, count) => sum + count, 0),
+//     activeCalls: Object.keys(activeCalls).length,
+//     roomDetails: Object.keys(roomUsers).map(room => ({
+//       room: room,
+//       userCount: roomUsers[room],
+//       hasActiveCall: !!activeCalls[room],
+//       callType: activeCalls[room]?.type || null
+//     }))
+//   };
+  
+//   res.status(200).json(stats);
 // });
 
 // server.listen(PORT, () => {
 //   console.log(`🚀 SERVER RUNNING ON PORT ${PORT}`);
 //   console.log(`📡 WebSocket server ready for connections`);
-//   console.log(`📊 Web Vitals API endpoints available`);
+//   console.log(`📞 WebRTC signaling server ready`);
+//   console.log(`🌐 Health check available at http://localhost:${PORT}/health`);
 // });
-
 // server/index.js
 const express = require("express");
 const http = require("http");
@@ -230,6 +385,7 @@ let userRooms = {}; // Track which room each socket is in
 let userSockets = {}; // Track socket info per user
 let roomUsernames = {}; // Track usernames per room to prevent duplicates
 let typingUsers = {}; // Track typing users per room
+let activeCalls = {}; // Track active calls per room
 
 io.on("connection", (socket) => {
   console.log(`🟢 User Connected: ${socket.id}`);
@@ -316,6 +472,158 @@ io.on("connection", (socket) => {
     }
   });
 
+  // WebRTC Signaling Events
+  socket.on("start_call", (data) => {
+    const { room, callType, caller } = data;
+    console.log(`📞 ${caller} is starting a ${callType} call in room ${room}`);
+    
+    // Initialize active call for room
+    if (!activeCalls[room]) {
+      activeCalls[room] = {
+        type: callType,
+        participants: new Set(),
+        startedBy: caller,
+        startTime: Date.now()
+      };
+    }
+    
+    activeCalls[room].participants.add(caller);
+    
+    // Notify other users in the room about incoming call
+    socket.to(room).emit("incoming_call", {
+      caller: caller,
+      callType: callType,
+      room: room
+    });
+  });
+
+  socket.on("join_call", (data) => {
+    const { room, caller, joiner } = data;
+    console.log(`📞 ${joiner} is joining the call with ${caller} in room ${room}`);
+    
+    if (activeCalls[room]) {
+      activeCalls[room].participants.add(joiner);
+    }
+    
+    // Notify the caller that someone joined
+    socket.to(room).emit("call_accepted", {
+      joiner: joiner,
+      caller: caller
+    });
+  });
+
+  socket.on("offer", (data) => {
+    const { room, peerId, offer } = data;
+    const senderInfo = userSockets[socket.id];
+    console.log(`🤝 Offer from ${senderInfo?.username} to ${peerId} in room ${room}`);
+    
+    // Find the target socket by username
+    const targetSocketId = Object.keys(userSockets).find(
+      socketId => userSockets[socketId].username === peerId && userSockets[socketId].room === room
+    );
+    
+    if (targetSocketId) {
+      io.to(targetSocketId).emit("offer", {
+        peerId: senderInfo?.username,
+        offer: offer
+      });
+    } else {
+      console.log(`❌ Could not find socket for user ${peerId} in room ${room}`);
+    }
+  });
+
+  socket.on("answer", (data) => {
+    const { room, peerId, answer } = data;
+    const senderInfo = userSockets[socket.id];
+    console.log(`✅ Answer from ${senderInfo?.username} to ${peerId} in room ${room}`);
+    
+    // Find the target socket by username
+    const targetSocketId = Object.keys(userSockets).find(
+      socketId => userSockets[socketId].username === peerId && userSockets[socketId].room === room
+    );
+    
+    if (targetSocketId) {
+      io.to(targetSocketId).emit("answer", {
+        peerId: senderInfo?.username,
+        answer: answer
+      });
+    } else {
+      console.log(`❌ Could not find socket for user ${peerId} in room ${room}`);
+    }
+  });
+
+  socket.on("ice_candidate", (data) => {
+    const { room, peerId, candidate } = data;
+    const senderInfo = userSockets[socket.id];
+    console.log(`🧊 ICE candidate from ${senderInfo?.username} to ${peerId} in room ${room}`);
+    
+    // Find the target socket by username
+    const targetSocketId = Object.keys(userSockets).find(
+      socketId => userSockets[socketId].username === peerId && userSockets[socketId].room === room
+    );
+    
+    if (targetSocketId) {
+      io.to(targetSocketId).emit("ice_candidate", {
+        peerId: senderInfo?.username,
+        candidate: candidate
+      });
+    } else {
+      console.log(`❌ Could not find socket for user ${peerId} in room ${room}`);
+    }
+  });
+
+  socket.on("decline_call", (data) => {
+    const { room, user } = data;
+    console.log(`❌ ${user} declined the call in room ${room}`);
+    
+    // Notify other users that the call was declined
+    socket.to(room).emit("call_declined", {
+      user: user,
+      room: room
+    });
+  });
+
+  socket.on("end_call", (data) => {
+    const { room, user } = data;
+    console.log(`📴 ${user} ended the call in room ${room}`);
+    
+    if (activeCalls[room]) {
+      activeCalls[room].participants.delete(user);
+      
+      // If no participants left, clean up the call
+      if (activeCalls[room].participants.size === 0) {
+        delete activeCalls[room];
+        console.log(`🧹 Cleaned up call data for room ${room}`);
+      }
+    }
+    
+    // Notify other users that the call was ended (but not the sender)
+    socket.to(room).emit("call_ended", {
+      user: user,
+      room: room
+    });
+  });
+
+  socket.on("leave_call", (data) => {
+    const { room, user } = data;
+    console.log(`🚪 ${user} left the call in room ${room}`);
+    
+    if (activeCalls[room]) {
+      activeCalls[room].participants.delete(user);
+      
+      // If no participants left, clean up the call
+      if (activeCalls[room].participants.size === 0) {
+        delete activeCalls[room];
+      }
+    }
+    
+    // Notify other users that someone left the call
+    socket.to(room).emit("user_left_call", {
+      user: user,
+      room: room
+    });
+  });
+
   socket.on("disconnect", () => {
     const room = userRooms[socket.id];
     const userInfo = userSockets[socket.id];
@@ -331,18 +639,37 @@ io.on("connection", (socket) => {
       
       // Remove username from room's username set
       if (userInfo && roomUsernames[room]) {
-        roomUsernames[room].delete(userInfo.username);
+        const username = userInfo.username;
+        roomUsernames[room].delete(username);
         
         // Clean up typing status
-        if (typingUsers[room] && typingUsers[room][userInfo.username]) {
-          delete typingUsers[room][userInfo.username];
-          socket.to(room).emit("user_stopped_typing", { username: userInfo.username, room });
+        if (typingUsers[room] && typingUsers[room][username]) {
+          delete typingUsers[room][username];
+          socket.to(room).emit("user_stopped_typing", { username, room });
+        }
+        
+        // Clean up call participation
+        if (activeCalls[room] && activeCalls[room].participants.has(username)) {
+          activeCalls[room].participants.delete(username);
+          
+          // Notify other users that this user left the call
+          socket.to(room).emit("user_left_call", {
+            user: username,
+            room: room
+          });
+          
+          // If no participants left, clean up the call
+          if (activeCalls[room].participants.size === 0) {
+            delete activeCalls[room];
+            console.log(`🧹 Cleaned up call data for room ${room} due to disconnect`);
+          }
         }
         
         // Clean up empty room data
         if (roomUsernames[room].size === 0) {
           delete roomUsernames[room];
-          delete typingUsers[room]; // Clean up typing data for empty rooms
+          delete typingUsers[room];
+          delete activeCalls[room];
         }
       }
       
@@ -362,7 +689,59 @@ io.on("connection", (socket) => {
   });
 });
 
+// Clean up stale typing indicators every 30 seconds
+setInterval(() => {
+  const now = Date.now();
+  const TYPING_TIMEOUT = 30000; // 30 seconds
+  
+  Object.keys(typingUsers).forEach(room => {
+    Object.keys(typingUsers[room]).forEach(username => {
+      const typingData = typingUsers[room][username];
+      if (now - typingData.timestamp > TYPING_TIMEOUT) {
+        delete typingUsers[room][username];
+        io.to(room).emit("user_stopped_typing", { username, room });
+        console.log(`🧹 Cleaned up stale typing indicator for ${username} in room ${room}`);
+      }
+    });
+    
+    // Clean up empty room typing data
+    if (Object.keys(typingUsers[room]).length === 0) {
+      delete typingUsers[room];
+    }
+  });
+}, 30000);
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    activeRooms: Object.keys(roomUsers).length,
+    totalUsers: Object.values(roomUsers).reduce((sum, count) => sum + count, 0),
+    activeCalls: Object.keys(activeCalls).length
+  });
+});
+
+// Get room statistics
+app.get("/rooms/stats", (req, res) => {
+  const stats = {
+    totalRooms: Object.keys(roomUsers).length,
+    totalUsers: Object.values(roomUsers).reduce((sum, count) => sum + count, 0),
+    activeCalls: Object.keys(activeCalls).length,
+    roomDetails: Object.keys(roomUsers).map(room => ({
+      room: room,
+      userCount: roomUsers[room],
+      hasActiveCall: !!activeCalls[room],
+      callType: activeCalls[room]?.type || null
+    }))
+  };
+  
+  res.status(200).json(stats);
+});
+
 server.listen(PORT, () => {
   console.log(`🚀 SERVER RUNNING ON PORT ${PORT}`);
   console.log(`📡 WebSocket server ready for connections`);
+  console.log(`📞 WebRTC signaling server ready`);
+  console.log(`🌐 Health check available at http://localhost:${PORT}/health`);
 });
