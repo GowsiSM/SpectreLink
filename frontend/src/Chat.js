@@ -1,4 +1,4 @@
-// Chat.js - Fixed with Mute/Unmute, Call Timer, and Video Controls
+// src/Chat.js
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import ScrollToBottom from "react-scroll-to-bottom";
 import EmojiPicker from "emoji-picker-react";
@@ -464,42 +464,42 @@ function Chat({ socket, username, room, userCount, onLogout }) {
           )}
         </div>
         <div className="chat-header-right">
-          {!inCall ? (
-            <>
-              <button className="call-button audio-btn" onClick={() => startCall('audio')}>
-                📞 Audio
-              </button>
-              <button className="call-button video-btn" onClick={() => startCall('video')}>
-                📹 Video
-              </button>
-            </>
-          ) : (
-            <>
-              <button 
-                className={`control-btn mute-btn ${isMuted ? 'muted' : ''}`} 
-                onClick={toggleMute}
-                title={isMuted ? 'Unmute' : 'Mute'}
-              >
-                {isMuted ? '🔇' : '🎤'}
-              </button>
-              {callType === 'video' && (
-                <button 
-                  className={`control-btn video-btn ${isVideoOff ? 'video-off' : ''}`} 
-                  onClick={toggleVideo}
-                  title={isVideoOff ? 'Turn Video On' : 'Turn Video Off'}
-                >
-                  {isVideoOff ? '📹❌' : '📹'}
-                </button>
-              )}
-              <button className="end-call-button" onClick={endCall}>
-                📞 End Call
-              </button>
-            </>
-          )}
-          <button className="logout-button" onClick={handleLogout}>
-            Logout
-          </button>
-        </div>
+  {!inCall ? (
+    <>
+      <button className="header-btn audio-btn" onClick={() => startCall('audio')}>
+        📞 Audio
+      </button>
+      <button className="header-btn video-btn" onClick={() => startCall('video')}>
+        📹 Video
+      </button>
+    </>
+  ) : (
+    <>
+      <button 
+        className={`control-btn mute-btn ${isMuted ? 'muted' : ''}`} 
+        onClick={toggleMute}
+        title={isMuted ? 'Unmute' : 'Mute'}
+      >
+        {isMuted ? '🔇' : '🎤'}
+      </button>
+      {callType === 'video' && (
+        <button 
+          className={`control-btn video-btn ${isVideoOff ? 'video-off' : ''}`} 
+          onClick={toggleVideo}
+          title={isVideoOff ? 'Turn Video On' : 'Turn Video Off'}
+        >
+          {isVideoOff ? '📹❌' : '📹'}
+        </button>
+      )}
+      <button className="header-btn end-call-btn" onClick={endCall}>
+        📞 End Call
+      </button>
+    </>
+  )}
+  <button className="header-btn logout-btn" onClick={handleLogout}>
+    Logout
+  </button>
+</div>
       </div>
 
       {/* Video Call Interface */}
