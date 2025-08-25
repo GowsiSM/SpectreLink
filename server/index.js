@@ -4,6 +4,34 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const { Server } = require("socket.io");
 require('dotenv').config();
+const express = require("express");
+const http = require("http");
+const cors = require("cors");
+const mongoose = require("mongoose");
+const { Server } = require("socket.io");
+
+// Load environment variables
+require('dotenv').config();
+
+// Comprehensive environment debugging
+console.log('🔍 COMPREHENSIVE ENVIRONMENT CHECK:');
+console.log('- NODE_ENV:', process.env.NODE_ENV);
+console.log('- PORT:', process.env.PORT);
+console.log('- MONGODB_URI exists:', !!process.env.MONGODB_URI);
+console.log('- MONGODB_URI length:', process.env.MONGODB_URI?.length || 0);
+console.log('- MONGODB_URI preview:', process.env.MONGODB_URI?.substring(0, 20) + '...');
+console.log('- All env vars containing "MONGO":', Object.keys(process.env).filter(key => key.includes('MONGO')));
+console.log('- Process platform:', process.platform);
+console.log('- Current working directory:', process.cwd());
+
+// If MONGODB_URI is missing, list all environment variables for debugging
+if (!process.env.MONGODB_URI) {
+  console.log('🚨 MONGODB_URI IS MISSING!');
+  console.log('📋 All environment variables:');
+  Object.keys(process.env).forEach(key => {
+    console.log(`  ${key}: ${key.includes('PASS') || key.includes('SECRET') || key.includes('KEY') ? '[HIDDEN]' : process.env[key]}`);
+  });
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -13,28 +41,37 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// MongoDB Connection
 // MongoDB Connection with better error handling
 const connectDB = async () => {
   try {
     // Check if MONGODB_URI is defined
     if (!process.env.MONGODB_URI) {
-      throw new Error('MONGODB_URI environment variable is not defined. Please check your .env file.');
+      console.error('❌ MONGODB_URI environment variable is not defined!');
+      console.error('💡 Available environment variables:', Object.keys(process.env).filter(key => key.includes('MONGO')));
+      throw new Error('MONGODB_URI environment variable is required');
     }
     
-    console.log('🔗 Attempting to connect to MongoDB...');
-    console.log('🔗 MongoDB URI exists:', !!process.env.MONGODB_URI);
+    console.log('🔗 Attempting to connect to MongoDB Atlas...');
+    console.log('🔗 Database name: spectreDB');
     
     await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
       serverSelectionTimeoutMS: 30000,
+      connectTimeoutMS: 30000,
+      socketTimeoutMS: 30000,
     });
-    console.log('📦 MongoDB Connected Successfully');
+    
+    console.log('📦 MongoDB Atlas Connected Successfully');
+    console.log('📊 Connection state:', mongoose.connection.readyState);
   } catch (error) {
     console.error('❌ MongoDB Connection Error:', error.message);
-    console.error('💡 Make sure your .env file contains MONGODB_URI=your_connection_string');
-    process.exit(1);
+    console.error('🔍 Connection string preview:', process.env.MONGODB_URI?.substring(0, 20) + '...');
+    
+    // Don't exit in production, let the app start without DB for debugging
+    if (process.env.NODE_ENV !== 'production') {
+      process.exit(1);
+    }
   }
 };
 
