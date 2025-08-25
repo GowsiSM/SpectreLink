@@ -15,7 +15,7 @@ app.use(express.json());
 // --- WebSocket (Chat logic) ---
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin:[ "http://localhost:3000","https://https://spectre-link.vercel.app/"],
     methods: ["GET", "POST"],
   },
 });
