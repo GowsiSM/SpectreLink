@@ -109,9 +109,13 @@ const UserSession = mongoose.model('UserSession', userSessionSchema);
 connectDB();
 
 // --- WebSocket (Chat logic) ---
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "http://localhost:3000,https://spectre-link.vercel.app")
+  .split(",")
+  .map(s => s.trim());
+
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:3000", "https://spectre-link.vercel.app"],
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
   },
 });
