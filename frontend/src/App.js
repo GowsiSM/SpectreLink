@@ -16,11 +16,10 @@ function App() {
   // Initialize socket connection
   const initializeSocket = () => {
     if (!socketRef.current) {
-      // socketRef.current = io.connect("http://localhost:3001");
-      io("https://spectrelink-server.onrender.com", {
-  transports: ["websocket"],   
-});
-    }
+    socketRef.current = io("http://localhost:3001", {
+      transports: ["websocket"], 
+    });
+  }
     return socketRef.current;
   };
 
