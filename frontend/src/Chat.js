@@ -11,6 +11,32 @@ const rtcConfig = {
   ],
 };
 
+// Helper function to format time consistently
+const formatTime = () => {
+  const now = new Date();
+  const hours = now.getHours().toString().padStart(2, '0');
+  const minutes = now.getMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
+};
+
+// Helper function to format any timestamp to HH:MM
+const formatTimestamp = (timestamp) => {
+  try {
+    // Handle different timestamp formats
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) {
+      // If it's not a valid date, return the original timestamp
+      return timestamp;
+    }
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  } catch (error) {
+    // If any error occurs, return the original timestamp
+    return timestamp;
+  }
+};
+
 function Chat({ socket, username, room, userCount, onLogout }) {
   const [currentMessage, setCurrentMessage] = useState("");
   const [messageList, setMessageList] = useState([]);
@@ -46,10 +72,7 @@ function Chat({ socket, username, room, userCount, onLogout }) {
         room: room,
         author: "System",
         message: message,
-        time: new Date(Date.now()).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
+        time: formatTime(),
         isSystem: true,
       };
       setMessageList((list) => [...list, systemMessage]);
@@ -93,10 +116,7 @@ function Chat({ socket, username, room, userCount, onLogout }) {
         room: room,
         author: username,
         message: currentMessage,
-        time: new Date(Date.now()).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
+        time: formatTime(),
       };
 
       await socket.emit("send_message", messageData);
@@ -905,7 +925,7 @@ function Chat({ socket, username, room, userCount, onLogout }) {
                         : messageContent.author}
                     </span>
                     <span style={{ margin: "0 8px" }}>|</span>
-                    <span className="time">{messageContent.time}</span>
+                    <span className="time">{formatTimestamp(messageContent.time)}</span>
                   </p>
                 </div>
               </div>
