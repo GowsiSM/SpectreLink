@@ -14,8 +14,17 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB Connection
+// MongoDB Connection with better error handling
 const connectDB = async () => {
   try {
+    // Check if MONGODB_URI is defined
+    if (!process.env.MONGODB_URI) {
+      throw new Error('MONGODB_URI environment variable is not defined. Please check your .env file.');
+    }
+    
+    console.log('🔗 Attempting to connect to MongoDB...');
+    console.log('🔗 MongoDB URI exists:', !!process.env.MONGODB_URI);
+    
     await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
@@ -24,6 +33,7 @@ const connectDB = async () => {
     console.log('📦 MongoDB Connected Successfully');
   } catch (error) {
     console.error('❌ MongoDB Connection Error:', error.message);
+    console.error('💡 Make sure your .env file contains MONGODB_URI=your_connection_string');
     process.exit(1);
   }
 };
