@@ -4,11 +4,6 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const { Server } = require("socket.io");
 require('dotenv').config();
-const express = require("express");
-const http = require("http");
-const cors = require("cors");
-const mongoose = require("mongoose");
-const { Server } = require("socket.io");
 
 // Load environment variables
 require('dotenv').config();
