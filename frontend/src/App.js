@@ -16,7 +16,7 @@ function App() {
   // Initialize socket connection
   const initializeSocket = () => {
     if (!socketRef.current) {
-    socketRef.current = io("http://localhost:3001", {
+    socketRef.current = io("https://spectrelink.onrender.com", {
       transports: ["websocket"], 
     });
   }
