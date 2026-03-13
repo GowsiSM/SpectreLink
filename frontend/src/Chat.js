@@ -1,4 +1,4 @@
-// Chat.js 
+// Chat.js
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import ScrollToBottom from "react-scroll-to-bottom";
 import EmojiPicker from "emoji-picker-react";
@@ -14,8 +14,8 @@ const rtcConfig = {
 // Helper function to format time consistently
 const formatTime = () => {
   const now = new Date();
-  const hours = now.getHours().toString().padStart(2, '0');
-  const minutes = now.getMinutes().toString().padStart(2, '0');
+  const hours = now.getHours().toString().padStart(2, "0");
+  const minutes = now.getMinutes().toString().padStart(2, "0");
   return `${hours}:${minutes}`;
 };
 
@@ -28,8 +28,8 @@ const formatTimestamp = (timestamp) => {
       // If it's not a valid date, return the original timestamp
       return timestamp;
     }
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const hours = date.getHours().toString().padStart(2, "0");
+    const minutes = date.getMinutes().toString().padStart(2, "0");
     return `${hours}:${minutes}`;
   } catch (error) {
     // If any error occurs, return the original timestamp
@@ -58,7 +58,7 @@ function Chat({ socket, username, room, userCount, onLogout }) {
   const [peerMediaStates, setPeerMediaStates] = useState(new Map());
 
   // Refs
-  const inputRef = useRef(null);
+  const textareaRef = useRef(null);
   const localVideoRef = useRef(null);
   const remoteVideosRef = useRef(new Map());
   const localStreamRef = useRef(null);
@@ -77,8 +77,20 @@ function Chat({ socket, username, room, userCount, onLogout }) {
       };
       setMessageList((list) => [...list, systemMessage]);
     },
-    [room]
+    [room],
   );
+
+  // Auto-expand textarea
+  const handleInputChange = useCallback((e) => {
+    setCurrentMessage(e.target.value);
+    if (textareaRef.current) {
+      // Reset height to auto to get the correct scrollHeight
+      textareaRef.current.style.height = "auto";
+      // Set height based on scrollHeight, with a max height
+      const newHeight = Math.min(textareaRef.current.scrollHeight, 150);
+      textareaRef.current.style.height = `${newHeight}px`;
+    }
+  }, []);
 
   // Update call timer
   useEffect(() => {
@@ -91,7 +103,7 @@ function Chat({ socket, username, room, userCount, onLogout }) {
         setCallDuration(
           `${minutes.toString().padStart(2, "0")}:${seconds
             .toString()
-            .padStart(2, "0")}`
+            .padStart(2, "0")}`,
         );
       }, 1000);
     } else {
@@ -123,6 +135,10 @@ function Chat({ socket, username, room, userCount, onLogout }) {
       setMessageList((list) => [...list, messageData]);
       setCurrentMessage("");
       setShowEmojiPicker(false);
+      // Reset textarea height after sending
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+      }
     }
   };
 
@@ -204,7 +220,7 @@ function Chat({ socket, username, room, userCount, onLogout }) {
         setIsVideoOff(false);
       }
     },
-    [inCall]
+    [inCall],
   );
 
   // Memoized function to create peer connection
@@ -252,7 +268,7 @@ function Chat({ socket, username, room, userCount, onLogout }) {
 
       return pc;
     },
-    [room, socket, handlePeerDisconnected]
+    [room, socket, handlePeerDisconnected],
   );
 
   // Memoized function to end call
@@ -295,7 +311,15 @@ function Chat({ socket, username, room, userCount, onLogout }) {
     }
 
     socket.emit("end_call", { room, user: username });
-  }, [inCall, callDuration, callType, room, socket, username, addSystemMessage]);
+  }, [
+    inCall,
+    callDuration,
+    callType,
+    room,
+    socket,
+    username,
+    addSystemMessage,
+  ]);
 
   const handleLogout = useCallback(() => {
     setShowEmojiPicker(false);
@@ -504,7 +528,7 @@ function Chat({ socket, username, room, userCount, onLogout }) {
         }
       } else {
         console.warn(
-          `Cannot add ICE candidate from ${data.peerId} - no remote description`
+          `Cannot add ICE candidate from ${data.peerId} - no remote description`,
         );
       }
     });
@@ -570,32 +594,47 @@ function Chat({ socket, username, room, userCount, onLogout }) {
 
   // Fix for local video display - ensures local video stream is properly assigned
   useEffect(() => {
-    if (localStreamRef.current && localVideoRef.current && callType === "video") {
+    if (
+      localStreamRef.current &&
+      localVideoRef.current &&
+      callType === "video"
+    ) {
       localVideoRef.current.srcObject = localStreamRef.current;
     }
   }, [inCall, callType]);
 
   // End call & cleanup if component unmounts
   useEffect(() => {
-  const peerConnections = peerConnectionsRef.current;
-  const remoteVideos = remoteVideosRef.current;
+    const peerConnections = peerConnectionsRef.current;
+    const remoteVideos = remoteVideosRef.current;
 
-  return () => {
-    // safely clean up using stable references
-    Object.values(peerConnections).forEach(pc => pc.close());
-    remoteVideos.forEach(video => {
-      if (video && video.srcObject) {
-        video.srcObject.getTracks().forEach(track => track.stop());
-      }
-    });
-  };
-}, []); 
+    return () => {
+      // safely clean up using stable references
+      Object.values(peerConnections).forEach((pc) => pc.close());
+      remoteVideos.forEach((video) => {
+        if (video && video.srcObject) {
+          video.srcObject.getTracks().forEach((track) => track.stop());
+        }
+      });
+    };
+  }, []);
 
   // Simple emoji handling - only add to input
   const onEmojiClick = (emojiData) => {
     const emoji = emojiData.emoji;
-    setCurrentMessage((prev) => prev + emoji);
-    if (inputRef.current) inputRef.current.focus();
+    setCurrentMessage((prev) => {
+      const newMessage = prev + emoji;
+      // Trigger auto-expand on next render
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = "auto";
+          const newHeight = Math.min(textareaRef.current.scrollHeight, 150);
+          textareaRef.current.style.height = `${newHeight}px`;
+        }
+      }, 0);
+      return newMessage;
+    });
+    if (textareaRef.current) textareaRef.current.focus();
   };
 
   return (
@@ -640,7 +679,11 @@ function Chat({ socket, username, room, userCount, onLogout }) {
               </button>
             </>
           ) : (
-            !inCall && <div className="no-call-message">Waiting for others to join...</div>
+            !inCall && (
+              <div className="no-call-message">
+                Waiting for others to join...
+              </div>
+            )
           )}
           {inCall && (
             <>
@@ -787,8 +830,7 @@ function Chat({ socket, username, room, userCount, onLogout }) {
                 width: "200px",
                 height: "150px",
                 objectFit: "cover",
-                display:
-                  callType === "video" && !isVideoOff ? "block" : "none",
+                display: callType === "video" && !isVideoOff ? "block" : "none",
               }}
             />
             {(callType === "audio" || isVideoOff) && (
@@ -799,7 +841,9 @@ function Chat({ socket, username, room, userCount, onLogout }) {
                 <div className="user-status">
                   <span className="username">You</span>
                   <div className="status-badges-horizontal">
-                    {isMuted && <span className="status-badge muted">Muted</span>}
+                    {isMuted && (
+                      <span className="status-badge muted">Muted</span>
+                    )}
                     {isVideoOff && callType === "video" && (
                       <span className="status-badge video-off">Video Off</span>
                     )}
@@ -816,11 +860,10 @@ function Chat({ socket, username, room, userCount, onLogout }) {
 
           <div className="remote-videos">
             {Array.from(connectedPeers.entries()).map(([peerId, peerData]) => {
-              const peerMediaState =
-                peerMediaStates.get(peerId) || {
-                  isMuted: false,
-                  isVideoOff: false,
-                };
+              const peerMediaState = peerMediaStates.get(peerId) || {
+                isMuted: false,
+                isVideoOff: false,
+              };
 
               return (
                 <div key={peerId} className="remote-video">
@@ -887,7 +930,10 @@ function Chat({ socket, username, room, userCount, onLogout }) {
             <h3>Incoming {incomingCall.callType} call</h3>
             <p>From: {incomingCall.caller}</p>
             <div className="modal-buttons">
-              <button className="accept-btn" onClick={() => joinCall(incomingCall)}>
+              <button
+                className="accept-btn"
+                onClick={() => joinCall(incomingCall)}
+              >
                 Accept
               </button>
               <button className="decline-btn" onClick={declineCall}>
@@ -907,8 +953,8 @@ function Chat({ socket, username, room, userCount, onLogout }) {
                 messageContent.isSystem
                   ? "system"
                   : username === messageContent.author
-                  ? "you"
-                  : "other"
+                    ? "you"
+                    : "other"
               }`}
             >
               <div>
@@ -921,11 +967,13 @@ function Chat({ socket, username, room, userCount, onLogout }) {
                       {messageContent.isSystem
                         ? "System"
                         : username === messageContent.author
-                        ? "You"
-                        : messageContent.author}
+                          ? "You"
+                          : messageContent.author}
                     </span>
                     <span style={{ margin: "0 8px" }}>|</span>
-                    <span className="time">{formatTimestamp(messageContent.time)}</span>
+                    <span className="time">
+                      {formatTimestamp(messageContent.time)}
+                    </span>
                   </p>
                 </div>
               </div>
@@ -962,13 +1010,17 @@ function Chat({ socket, username, room, userCount, onLogout }) {
           )}
         </div>
 
-        <input
-          type="text"
-          ref={inputRef}
+        <textarea
+          ref={textareaRef}
           value={currentMessage}
           placeholder="Type a message"
-          onChange={(e) => setCurrentMessage(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          onChange={handleInputChange}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              sendMessage();
+            }
+          }}
         />
 
         <button onClick={sendMessage}>Send</button>
