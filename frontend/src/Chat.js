@@ -22,17 +22,14 @@ const formatTime = () => {
 // Helper function to format any timestamp to HH:MM
 const formatTimestamp = (timestamp) => {
   try {
-    // Handle different timestamp formats
     const date = new Date(timestamp);
     if (isNaN(date.getTime())) {
-      // If it's not a valid date, return the original timestamp
       return timestamp;
     }
     const hours = date.getHours().toString().padStart(2, "0");
     const minutes = date.getMinutes().toString().padStart(2, "0");
     return `${hours}:${minutes}`;
   } catch (error) {
-    // If any error occurs, return the original timestamp
     return timestamp;
   }
 };
@@ -44,7 +41,7 @@ function Chat({ socket, username, room, userCount, onLogout }) {
 
   // WebRTC states
   const [inCall, setInCall] = useState(false);
-  const [callType, setCallType] = useState(null); // 'audio' or 'video'
+  const [callType, setCallType] = useState(null);
   const [incomingCall, setIncomingCall] = useState(null);
   const [connectedPeers, setConnectedPeers] = useState(new Map());
 
@@ -54,7 +51,7 @@ function Chat({ socket, username, room, userCount, onLogout }) {
   const [callStartTime, setCallStartTime] = useState(null);
   const [callDuration, setCallDuration] = useState("00:00");
 
-  // Peer media states - track mute/video status of remote peers
+  // Peer media states
   const [peerMediaStates, setPeerMediaStates] = useState(new Map());
 
   // Refs
@@ -64,6 +61,21 @@ function Chat({ socket, username, room, userCount, onLogout }) {
   const localStreamRef = useRef(null);
   const peerConnectionsRef = useRef(new Map());
   const callTimerRef = useRef(null);
+
+  // ─── Emoji DB isolation ───────────────────────────────────────────────────
+  // Generate a stable, per-user key once when the component mounts.
+  // Using username + room + socket.id ensures two people with the same
+  // username in different rooms — or even the same room in different tabs —
+  // never share an IndexedDB store.
+  const emojiDbKey = useRef(
+    `spectre_${username}_${room}_${socket.id}`.replace(/[^a-zA-Z0-9_-]/g, "_"), // sanitize: IndexedDB names can't have spaces etc.
+  );
+
+  const emojiDbConfig = {
+    dbName: emojiDbKey.current,
+    storeName: `recent_${emojiDbKey.current}`,
+  };
+  // ──────────────────────────────────────────────────────────────────────────
 
   // Helper function to add system messages to chat
   const addSystemMessage = useCallback(
@@ -84,9 +96,7 @@ function Chat({ socket, username, room, userCount, onLogout }) {
   const handleInputChange = useCallback((e) => {
     setCurrentMessage(e.target.value);
     if (textareaRef.current) {
-      // Reset height to auto to get the correct scrollHeight
       textareaRef.current.style.height = "auto";
-      // Set height based on scrollHeight, with a max height
       const newHeight = Math.min(textareaRef.current.scrollHeight, 150);
       textareaRef.current.style.height = `${newHeight}px`;
     }
@@ -135,14 +145,12 @@ function Chat({ socket, username, room, userCount, onLogout }) {
       setMessageList((list) => [...list, messageData]);
       setCurrentMessage("");
       setShowEmojiPicker(false);
-      // Reset textarea height after sending
       if (textareaRef.current) {
         textareaRef.current.style.height = "auto";
       }
     }
   };
 
-  // Toggle mute/unmute - safe state update
   const toggleMute = useCallback(() => {
     if (!localStreamRef.current) return;
 
@@ -150,7 +158,7 @@ function Chat({ socket, username, room, userCount, onLogout }) {
     setIsMuted((prev) => {
       const next = !prev;
       audioTracks.forEach((track) => {
-        track.enabled = !next; // enabled=false means muted
+        track.enabled = !next;
       });
       socket.emit("media_state_change", {
         room,
@@ -162,7 +170,6 @@ function Chat({ socket, username, room, userCount, onLogout }) {
     });
   }, [room, socket, username, isVideoOff]);
 
-  // Toggle video on/off - safe state update
   const toggleVideo = useCallback(() => {
     if (!localStreamRef.current || callType !== "video") return;
 
@@ -170,7 +177,7 @@ function Chat({ socket, username, room, userCount, onLogout }) {
     setIsVideoOff((prev) => {
       const next = !prev;
       videoTracks.forEach((track) => {
-        track.enabled = !next; // enabled=false means video off
+        track.enabled = !next;
       });
       socket.emit("media_state_change", {
         room,
@@ -182,7 +189,6 @@ function Chat({ socket, username, room, userCount, onLogout }) {
     });
   }, [callType, room, socket, username, isMuted]);
 
-  // Memoized function to handle peer disconnection
   const handlePeerDisconnected = useCallback(
     (peerId) => {
       const pc = peerConnectionsRef.current.get(peerId);
@@ -198,14 +204,12 @@ function Chat({ socket, username, room, userCount, onLogout }) {
         return updated;
       });
 
-      // Remove peer media state
       setPeerMediaStates((prev) => {
         const updated = new Map(prev);
         updated.delete(peerId);
         return updated;
       });
 
-      // Only end call if no peers left AND we're still in call
       if (inCall && peerConnectionsRef.current.size === 0) {
         if (localStreamRef.current) {
           localStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -223,7 +227,6 @@ function Chat({ socket, username, room, userCount, onLogout }) {
     [inCall],
   );
 
-  // Memoized function to create peer connection
   const createPeerConnection = useCallback(
     (peerId) => {
       const pc = new RTCPeerConnection(rtcConfig);
@@ -241,14 +244,12 @@ function Chat({ socket, username, room, userCount, onLogout }) {
       pc.ontrack = (event) => {
         const [remoteStream] = event.streams;
 
-        // Update connected peers
         setConnectedPeers((prev) => {
           const updated = new Map(prev);
           updated.set(peerId, { stream: remoteStream });
           return updated;
         });
 
-        // Set video element source
         setTimeout(() => {
           const videoElement = remoteVideosRef.current.get(peerId);
           if (videoElement && remoteStream) {
@@ -271,29 +272,23 @@ function Chat({ socket, username, room, userCount, onLogout }) {
     [room, socket, handlePeerDisconnected],
   );
 
-  // Memoized function to end call
   const endCall = useCallback(() => {
     if (!inCall) return;
 
     const finalDuration = callDuration;
     const currentCallType = callType;
 
-    // Stop local stream
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => track.stop());
       localStreamRef.current = null;
     }
 
-    // Close all peer connections
     peerConnectionsRef.current.forEach((pc) => {
       pc.close();
     });
     peerConnectionsRef.current.clear();
-
-    // Clear remote videos
     remoteVideosRef.current.clear();
 
-    // Update state
     setInCall(false);
     setCallType(null);
     setConnectedPeers(new Map());
@@ -302,7 +297,6 @@ function Chat({ socket, username, room, userCount, onLogout }) {
     setIsMuted(false);
     setIsVideoOff(false);
 
-    // Add system message about call ending
     if (currentCallType && finalDuration !== "00:00") {
       const callEndMessage = `${
         currentCallType.charAt(0).toUpperCase() + currentCallType.slice(1)
@@ -328,7 +322,6 @@ function Chat({ socket, username, room, userCount, onLogout }) {
       endCall();
     }
 
-    // Close PCs and clear refs as extra safety
     peerConnectionsRef.current.forEach((pc) => pc.close());
     peerConnectionsRef.current.clear();
     remoteVideosRef.current.clear();
@@ -337,7 +330,6 @@ function Chat({ socket, username, room, userCount, onLogout }) {
     onLogout();
   }, [inCall, endCall, socket, onLogout]);
 
-  // WebRTC Functions
   const getUserMedia = async (video = false) => {
     try {
       const constraints = {
@@ -347,7 +339,6 @@ function Chat({ socket, username, room, userCount, onLogout }) {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       localStreamRef.current = stream;
 
-      // Ensure the local video element gets the stream immediately
       if (localVideoRef.current && video) {
         localVideoRef.current.srcObject = stream;
       }
@@ -368,18 +359,15 @@ function Chat({ socket, username, room, userCount, onLogout }) {
       setIsMuted(false);
       setIsVideoOff(false);
 
-      // Make sure local preview appears instantly
       if (localVideoRef.current && type === "video") {
         localVideoRef.current.srcObject = stream;
       }
 
-      // Add system message about call starting (FIXED: use `type`)
       const callStartMessage = `${
         type.charAt(0).toUpperCase() + type.slice(1)
       } call started by ${username}`;
       addSystemMessage(callStartMessage);
 
-      // Emit call start to other users in room
       socket.emit("start_call", {
         room,
         callType: type,
@@ -401,12 +389,10 @@ function Chat({ socket, username, room, userCount, onLogout }) {
       setIsMuted(false);
       setIsVideoOff(false);
 
-      // Ensure local preview appears when joining
       if (localVideoRef.current && callData.callType === "video") {
         localVideoRef.current.srcObject = stream;
       }
 
-      // Add system message about joining call
       const joinMessage = `${username} joined the ${callData.callType} call`;
       addSystemMessage(joinMessage);
 
@@ -426,9 +412,8 @@ function Chat({ socket, username, room, userCount, onLogout }) {
     socket.emit("decline_call", { room, user: username });
   };
 
-  // Socket event listeners for WebRTC
+  // Socket event listeners
   useEffect(() => {
-    // Remove existing listeners to prevent duplicates
     socket.off("receive_message");
     socket.off("incoming_call");
     socket.off("call_accepted");
@@ -441,12 +426,10 @@ function Chat({ socket, username, room, userCount, onLogout }) {
     socket.off("media_state_change");
     socket.off("media_state_changed");
 
-    // Add listeners
     socket.on("receive_message", (data) => {
       setMessageList((list) => [...list, data]);
     });
 
-    // WebRTC signaling events
     socket.on("incoming_call", (callData) => {
       setIncomingCall(callData);
       const incomingMessage = `Incoming ${callData.callType} call from ${callData.caller}`;
@@ -477,12 +460,10 @@ function Chat({ socket, username, room, userCount, onLogout }) {
     });
 
     socket.on("offer", async (data) => {
-      // Create peer connection if it doesn't exist
       if (!peerConnectionsRef.current.has(data.peerId)) {
         const pc = createPeerConnection(data.peerId);
         peerConnectionsRef.current.set(data.peerId, pc);
 
-        // Add local stream tracks
         if (localStreamRef.current) {
           localStreamRef.current.getTracks().forEach((track) => {
             pc.addTrack(track, localStreamRef.current);
@@ -526,10 +507,6 @@ function Chat({ socket, username, room, userCount, onLogout }) {
         } catch (error) {
           console.error("Error adding ICE candidate:", error);
         }
-      } else {
-        console.warn(
-          `Cannot add ICE candidate from ${data.peerId} - no remote description`,
-        );
       }
     });
 
@@ -539,21 +516,18 @@ function Chat({ socket, username, room, userCount, onLogout }) {
 
     socket.on("call_ended", (data) => {
       if (data.user !== username) {
-        const leaveMessage = `${data.user} left the call`;
-        addSystemMessage(leaveMessage);
+        addSystemMessage(`${data.user} left the call`);
         handlePeerDisconnected(data.user);
       }
     });
 
     socket.on("user_left_call", (data) => {
       if (data.user !== username) {
-        const leaveMessage = `${data.user} left the call`;
-        addSystemMessage(leaveMessage);
+        addSystemMessage(`${data.user} left the call`);
         handlePeerDisconnected(data.user);
       }
     });
 
-    // Listen to BOTH event names for safety
     const handleMediaStateUpdate = (data) => {
       if (data.user !== username) {
         setPeerMediaStates((prev) => {
@@ -592,7 +566,6 @@ function Chat({ socket, username, room, userCount, onLogout }) {
     addSystemMessage,
   ]);
 
-  // Fix for local video display - ensures local video stream is properly assigned
   useEffect(() => {
     if (
       localStreamRef.current &&
@@ -603,13 +576,11 @@ function Chat({ socket, username, room, userCount, onLogout }) {
     }
   }, [inCall, callType]);
 
-  // End call & cleanup if component unmounts
   useEffect(() => {
     const peerConnections = peerConnectionsRef.current;
     const remoteVideos = remoteVideosRef.current;
 
     return () => {
-      // safely clean up using stable references
       Object.values(peerConnections).forEach((pc) => pc.close());
       remoteVideos.forEach((video) => {
         if (video && video.srcObject) {
@@ -619,12 +590,10 @@ function Chat({ socket, username, room, userCount, onLogout }) {
     };
   }, []);
 
-  // Simple emoji handling - only add to input
   const onEmojiClick = (emojiData) => {
     const emoji = emojiData.emoji;
     setCurrentMessage((prev) => {
       const newMessage = prev + emoji;
-      // Trigger auto-expand on next render
       setTimeout(() => {
         if (textareaRef.current) {
           textareaRef.current.style.height = "auto";
@@ -650,7 +619,6 @@ function Chat({ socket, username, room, userCount, onLogout }) {
           )}
         </div>
         <div className="chat-header-right">
-          {/* Only show call buttons if there are other users in the room */}
           {!inCall && userCount > 1 ? (
             <>
               <button
@@ -743,7 +711,6 @@ function Chat({ socket, username, room, userCount, onLogout }) {
       {/* Video Call Interface */}
       {inCall && (
         <div className="video-call-container">
-          {/* Waiting Overlay - Higher Z-index */}
           {connectedPeers.size === 0 && (
             <div className="waiting-overlay">
               <div className="waiting-message">
@@ -759,7 +726,6 @@ function Chat({ socket, username, room, userCount, onLogout }) {
             </div>
           )}
 
-          {/* Call Controls Overlay */}
           <div className="call-controls">
             <div className="call-info">
               <span className="call-type-indicator">
@@ -819,7 +785,6 @@ function Chat({ socket, username, room, userCount, onLogout }) {
             </div>
           </div>
 
-          {/* Local Video - Lower Z-index */}
           <div className="local-video">
             <video
               ref={localVideoRef}
@@ -1002,6 +967,12 @@ function Chat({ socket, username, room, userCount, onLogout }) {
                   defaultEmoji: "1f60a",
                   defaultCaption: "Choose an emoji",
                 }}
+                // Each user gets their own isolated IndexedDB store.
+                // Key = username + room + socket.id → guaranteed unique
+                // even if two people share the same username across rooms
+                // or open the app in two tabs simultaneously.
+                lazyLoadEmojis={true}
+                dbConfig={emojiDbConfig}
                 style={{
                   "--epr-category-label-height": "0px",
                 }}
