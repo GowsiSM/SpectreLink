@@ -16,8 +16,27 @@ function App() {
   // Initialize socket connection
   const initializeSocket = () => {
     if (!socketRef.current) {
-      socketRef.current = io("https://spectrelink-backend.onrender.com", {
+      const socketURL =
+        process.env.REACT_APP_SOCKET_URL ||
+        "https://spectrelink-backend.onrender.com";
+      console.log("🔌 Initializing socket with URL:", socketURL);
+
+      socketRef.current = io(socketURL, {
         transports: ["websocket"],
+      });
+
+      // Connection event listeners
+      socketRef.current.on("connect", () => {
+        console.log("✅ Connected:", socketRef.current.id);
+      });
+
+      socketRef.current.on("connect_error", (err) => {
+        console.log("❌ Connection Error:", err.message);
+        setErrorMessage("Connection error: " + err.message);
+      });
+
+      socketRef.current.on("disconnect", () => {
+        console.log("🔌 Disconnected from server");
       });
     }
     return socketRef.current;
@@ -28,6 +47,7 @@ function App() {
       setIsJoining(true);
       setErrorMessage("");
       const socket = initializeSocket();
+      console.log("📤 Emitting join_room event with:", { room, username });
       socket.emit("join_room", { room, username });
     }
   };
@@ -53,16 +73,19 @@ function App() {
     if (!socket) return;
 
     socket.on("room_data", (data) => {
+      console.log("📊 Received room_data:", data);
       setUserCount(data.userCount);
     });
 
     socket.on("join_success", () => {
+      console.log("✅ Join success! Moving to chat...");
       setShowChat(true);
       setIsJoining(false);
       setErrorMessage("");
     });
 
     socket.on("join_error", (data) => {
+      console.log("❌ Join error:", data.message);
       setErrorMessage(data.message);
       setIsJoining(false);
       setShowChat(false);
