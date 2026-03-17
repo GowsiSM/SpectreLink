@@ -12,14 +12,14 @@ function App() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isJoining, setIsJoining] = useState(false);
   const socketRef = useRef(null);
-  
+
   // Initialize socket connection
   const initializeSocket = () => {
     if (!socketRef.current) {
-    socketRef.current = io("https://spectrelink.onrender.com", {
-      transports: ["websocket"], 
-    });
-  }
+      socketRef.current = io("https://spectrelink-backend.onrender.com", {
+        transports: ["websocket"],
+      });
+    }
     return socketRef.current;
   };
 
@@ -40,7 +40,7 @@ function App() {
     setUserCount(0);
     setErrorMessage("");
     setIsJoining(false);
-    
+
     // Clear socket reference so a new connection can be made
     if (socketRef.current) {
       socketRef.current.disconnect();
@@ -83,7 +83,10 @@ function App() {
         <div className="joinChatContainer">
           <h3>Join A Chat</h3>
           {errorMessage && (
-            <div className="error-message" style={{color: 'red', marginBottom: '10px'}}>
+            <div
+              className="error-message"
+              style={{ color: "red", marginBottom: "10px" }}
+            >
               {errorMessage}
             </div>
           )}
@@ -108,11 +111,11 @@ function App() {
           </button>
         </div>
       ) : (
-        <Chat 
-          socket={socketRef.current} 
-          username={username} 
-          room={room} 
-          userCount={userCount} 
+        <Chat
+          socket={socketRef.current}
+          username={username}
+          room={room}
+          userCount={userCount}
           onLogout={handleLogout}
         />
       )}
