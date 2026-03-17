@@ -38,6 +38,26 @@ function App() {
       socketRef.current.on("disconnect", () => {
         console.log("🔌 Disconnected from server");
       });
+
+      // Room event listeners (set up when socket is created)
+      socketRef.current.on("room_data", (data) => {
+        console.log("📊 Received room_data:", data);
+        setUserCount(data.userCount);
+      });
+
+      socketRef.current.on("join_success", () => {
+        console.log("✅ Join success! Moving to chat...");
+        setShowChat(true);
+        setIsJoining(false);
+        setErrorMessage("");
+      });
+
+      socketRef.current.on("join_error", (data) => {
+        console.log("❌ Join error:", data.message);
+        setErrorMessage(data.message);
+        setIsJoining(false);
+        setShowChat(false);
+      });
     }
     return socketRef.current;
   };
@@ -69,33 +89,12 @@ function App() {
   };
 
   useEffect(() => {
-    const socket = socketRef.current;
-    if (!socket) return;
-
-    socket.on("room_data", (data) => {
-      console.log("📊 Received room_data:", data);
-      setUserCount(data.userCount);
-    });
-
-    socket.on("join_success", () => {
-      console.log("✅ Join success! Moving to chat...");
-      setShowChat(true);
-      setIsJoining(false);
-      setErrorMessage("");
-    });
-
-    socket.on("join_error", (data) => {
-      console.log("❌ Join error:", data.message);
-      setErrorMessage(data.message);
-      setIsJoining(false);
-      setShowChat(false);
-    });
-
     return () => {
-      if (socket) {
-        socket.off("room_data");
-        socket.off("join_success");
-        socket.off("join_error");
+      // Cleanup on unmount
+      if (socketRef.current) {
+        socketRef.current.off("room_data");
+        socketRef.current.off("join_success");
+        socketRef.current.off("join_error");
       }
     };
   }, []);
