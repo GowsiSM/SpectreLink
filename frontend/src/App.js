@@ -75,7 +75,7 @@ function App() {
         socket.off("join_error");
       }
     };
-  }, [socketRef.current]);
+  }, []);
 
   return (
     <div className="App">
