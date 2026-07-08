@@ -13,91 +13,93 @@ function App() {
   const [isJoining, setIsJoining] = useState(false);
   const socketRef = useRef(null);
 
-  // Initialize socket connection
-  const initializeSocket = () => {
-    if (!socketRef.current) {
-      const socketURL =
-        process.env.REACT_APP_SOCKET_URL ||
-        "https://spectrelink-backend.onrender.com";
-      console.log("🔌 Initializing socket with URL:", socketURL);
+  // Socket created in useEffect, not on button click
+  // React owns this lifecycle now. Socket is created once on mount,
+  // torn down completely on unmount. No button click needed.
+  useEffect(() => {
+    const socketURL =
+      process.env.REACT_APP_SOCKET_URL ||
+      "https://spectrelink-backend.onrender.com";
 
-      socketRef.current = io(socketURL, {
-        transports: ["websocket"],
-      });
+    const socket = io(socketURL, {
+      transports: ["websocket"],
+    });
 
-      // Connection event listeners
-      socketRef.current.on("connect", () => {
-        console.log("✅ Connected:", socketRef.current.id);
-      });
+    // Store in ref so joinRoom and handleLogout can access it
+    // without causing re-renders
+    socketRef.current = socket;
 
-      socketRef.current.on("connect_error", (err) => {
-        console.log("❌ Connection Error:", err.message);
-        setErrorMessage("Connection error: " + err.message);
-      });
+    socket.on("connect", () => {
+      console.log("✅ Connected:", socket.id);
+    });
 
-      socketRef.current.on("disconnect", () => {
-        console.log("🔌 Disconnected from server");
-      });
+    socket.on("connect_error", (err) => {
+      // No stale closure here — setErrorMessage is stable,
+      // err comes from the event, no external state read
+      setErrorMessage("Connection error: " + err.message);
+    });
 
-      // Room event listeners (set up when socket is created)
-      socketRef.current.on("room_data", (data) => {
-        console.log("📊 Received room_data:", data);
-        setUserCount(data.userCount);
-      });
+    socket.on("disconnect", () => {
+      console.log("🔌 Disconnected from server");
+    });
 
-      socketRef.current.on("join_success", () => {
-        console.log("✅ Join success! Moving to chat...");
-        setShowChat(true);
-        setIsJoining(false);
-        setErrorMessage("");
-      });
+    socket.on("room_data", (data) => {
+      // ✅ setUserCount is a stable setter — safe to call directly
+      setUserCount(data.userCount);
+    });
 
-      socketRef.current.on("join_error", (data) => {
-        console.log("❌ Join error:", data.message);
-        setErrorMessage(data.message);
-        setIsJoining(false);
-        setShowChat(false);
-      });
-    }
-    return socketRef.current;
-  };
+    socket.on("join_success", () => {
+      setShowChat(true);
+      setIsJoining(false);
+      setErrorMessage("");
+    });
 
+    socket.on("join_error", (data) => {
+      setErrorMessage(data.message);
+      setIsJoining(false);
+      setShowChat(false);
+    });
+
+    // Proper cleanup — removes ALL listeners AND disconnects
+    // This runs when the component unmounts (tab close, navigation)
+    // Server is notified. No ghost connections left behind.
+    return () => {
+      socket.off("connect");
+      socket.off("connect_error");
+      socket.off("disconnect");
+      socket.off("room_data");
+      socket.off("join_success");
+      socket.off("join_error");
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, []); // Empty array = run once on mount, clean up on unmount
+
+  // ✅ joinRoom is now clean — just validates and emits
+  // Socket already exists by the time user sees the form
   const joinRoom = () => {
     if (username.trim() !== "" && room.trim() !== "") {
+      if (!socketRef.current) return; // guard for edge cases
       setIsJoining(true);
       setErrorMessage("");
-      const socket = initializeSocket();
-      console.log("📤 Emitting join_room event with:", { room, username });
-      socket.emit("join_room", { room, username });
+      socketRef.current.emit("join_room", { room, username });
     }
   };
 
   const handleLogout = () => {
-    // Reset all states
     setShowChat(false);
     setUsername("");
     setRoom("");
     setUserCount(0);
     setErrorMessage("");
     setIsJoining(false);
-
-    // Clear socket reference so a new connection can be made
+    // Socket will be disconnected by useEffect cleanup when component unmounts
+    // If you want immediate disconnect on logout without unmounting, keep this:
     if (socketRef.current) {
       socketRef.current.disconnect();
       socketRef.current = null;
     }
   };
-
-  useEffect(() => {
-    return () => {
-      // Cleanup on unmount
-      if (socketRef.current) {
-        socketRef.current.off("room_data");
-        socketRef.current.off("join_success");
-        socketRef.current.off("join_error");
-      }
-    };
-  }, []);
 
   return (
     <div className="App">
